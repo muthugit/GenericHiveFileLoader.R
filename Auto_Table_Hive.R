@@ -1,0 +1,35 @@
+library(tools)
+library(rJava)
+library(RHive)
+library(Rserve)
+Sys.setenv("HADOOP_HOME"="/usr/local/hadoop/")
+Sys.setenv("HIVE_HOME"="/usr/local/apache-hive-0.14.0-bin/")
+Sys.setenv(RHIVE_FS_HOME="/home/manivannan/R/x86_64-pc-linux-gnu-library/3.3/RHive")
+rhive.env()
+rhive.init()
+rhive.connect(hiveServer2 = FALSE)
+rhive.query("use city")
+table <- "create table IF NOT EXISTS"
+qry <- "load data local inpath"
+filename <- file.choose()
+dataex <- read.csv(filename,header = TRUE,sep = ',',dec = '.',stringsAsFactors = FALSE)
+name <- basename(filename)
+fn <- file_path_sans_ext(name)
+filename <- paste("'",filename,"'",sep = '')
+qry <- paste(qry,filename,"OVERWRITE INTO table",fn)
+field <- "("
+for(i in 1:ncol(dataex))
+{
+  if(class(dataex[,i])=="integer")
+    field <- paste(field,colnames(dataex[i]),"int,")
+  else if(class(dataex[,i])=="character")
+    field <- paste(field,colnames(dataex[i]),"string,")
+  else if(class(dataex[,i])=="numeric")
+    field <- paste(field,colnames(dataex[i]),"decimal,")
+  else
+    field <- paste(field,colnames(dataex[i]),"string,")
+}
+field <- paste(sub(',$', '', field),")")
+table<-paste(table,fn,field,"ROW FORMAT DELIMITED fields terminated by ',' LINES TERMINATED BY '\n' stored as textfile")
+rhive.query(table)
+rhive.query(qry)
